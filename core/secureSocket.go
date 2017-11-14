@@ -1,6 +1,8 @@
 package core
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"net"
 )
@@ -58,5 +60,35 @@ func (secureSocket *SecureSocket) EncodeCopy(dst *net.TCPConn, src *net.TCPConn)
 
 // 从src中源源不断的读取加密后的数据解密后写入到dst，直到src中没有数据可以再读取
 func (secureSocket *SecureSocket) DecodeCopy(dst *net.TCPConn, src *net.TCPConn) error {
-	return nil
+	buf := make([]byte, BufSize)
+	for {
+		readCount, readErr := secureSocket.DecodeRead(src, buf)
+		if readErr != nil {
+			if readErr != nil {
+				if readErr != io.EOF {
+					return readErr
+				} else {
+					return nil
+				}
+			}
+		}
+		if readCount > 0 {
+			writeCount, writeErr := dst.Write(buf[0:readCount])
+			if writeErr != nil {
+				return writeErr
+			}
+			if readCount != writeCount {
+				return io.ErrShortWrite
+			}
+		}
+	}
+}
+
+// 和远程的socket建立连接，他们之间的数据传输会加密
+func (secureSocket *SecureSocket) connRemote() (conn *net.TCPConn, err error) {
+	conn, err = net.DialTCP("tcp", nil, secureSocket.RemoteAddr)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("连接到远程服务器 %s 失败:%s", secureSocket.RemoteAddr, err))
+	}
+	return
 }
