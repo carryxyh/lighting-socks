@@ -11,10 +11,18 @@ type Cipher struct {
 
 // 加密原数据
 func (cipher *Cipher) encode(bs []byte) {
-
+	for i, v := range bs {
+		bs[i] = cipher.encodePwd[v]
+	}
 }
 
 // 解码加密后的数据到原数据
+func (cipher *Cipher) decode(bs []byte) {
+	for i, v := range bs {
+		bs[i] = cipher.decodePwd[v]
+	}
+}
+
 func NewCipher(encodePwd *Password) *Cipher {
 	decodePwd := &Password{}
 	for i, v := range encodePwd {
