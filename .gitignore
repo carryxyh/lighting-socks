@@ -3,6 +3,8 @@
 *.dll
 *.so
 *.dylib
+# intellij idea sth
+*.idea
 
 # Test binary, build with `go test -c`
 *.test
