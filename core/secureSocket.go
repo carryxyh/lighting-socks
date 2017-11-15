@@ -85,7 +85,7 @@ func (secureSocket *SecureSocket) DecodeCopy(dst *net.TCPConn, src *net.TCPConn)
 }
 
 // 和远程的socket建立连接，他们之间的数据传输会加密
-func (secureSocket *SecureSocket) connRemote() (conn *net.TCPConn, err error) {
+func (secureSocket *SecureSocket) ConnRemote() (conn *net.TCPConn, err error) {
 	conn, err = net.DialTCP("tcp", nil, secureSocket.RemoteAddr)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("连接到远程服务器 %s 失败:%s", secureSocket.RemoteAddr, err))
