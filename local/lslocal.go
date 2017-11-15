@@ -66,4 +66,7 @@ func (local *LsLocal) handleConn(userConn *net.TCPConn) {
 			proxyServer.Close()
 		}
 	}()
+
+	// 从 localUser 发送数据发送到 proxyServer，这里因为处在翻墙阶段出现网络错误的概率更大
+	local.EncodeCopy(proxyServer, userConn)
 }
