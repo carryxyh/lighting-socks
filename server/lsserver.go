@@ -47,6 +47,57 @@ func (lsServer *LsServer) Listen(didListen func(listenAddr net.Addr)) error {
 	return nil
 }
 
+// 解socks5协议 https://www.ietf.org/rfc/rfc1928.txt
 func (lsServer *LsServer) handleConn(localConn *net.TCPConn) {
+	defer localConn.Close()
+	buf := make([]byte, 256)
 
+	/**
+	  The localConn connects to the dstServer, and sends a ver
+	  identifier/method selection message:
+	             +----+----------+----------+
+	             |VER | NMETHODS | METHODS  |
+	             +----+----------+----------+
+	             | 1  |    1     | 1 to 255 |
+	             +----+----------+----------+
+	  The VER field is set to X'05' for this ver of the protocol.  The
+	  NMETHODS field contains the number of method identifier octets that
+	  appear in the METHODS field.
+	*/
+
+	// 第一个字段VER代表Socks的版本，Socks5默认为0x05，其固定长度为1个字节
+	_, err := lsServer.DecodeRead(localConn, buf)
+	// 只支持版本5
+	if err != nil || buf[0] != 0x05 {
+		return
+	}
+
+	/**
+	  The dstServer selects from one of the methods given in METHODS, and
+	  sends a METHOD selection message:
+
+	             +----+--------+
+	             |VER | METHOD |
+	             +----+--------+
+	             | 1  |   1    |
+	             +----+--------+
+	*/
+
+	// 不需要验证，直接验证通过
+	lsServer.EncodeWrite(localConn, []byte{0x05, 0x00})
+
+	/**
+	  +----+-----+-------+------+----------+----------+
+	  |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
+	  +----+-----+-------+------+----------+----------+
+	  | 1  |  1  | X'00' |  1   | Variable |    2     |
+	  +----+-----+-------+------+----------+----------+
+	*/
+
+	// 获取真正的远程服务的地址
+	n, err := lsServer.DecodeRead(localConn, buf)
+	// n 最短的长度为7 情况为 ATYP=3 DST.ADDR占用1字节 值为0x0
+	if err != nil || n < 7 {
+		return
+	}
 }
