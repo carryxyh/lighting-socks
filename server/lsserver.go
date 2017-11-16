@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/binary"
 	"lighting-socks/core"
 	"log"
 	"net"
@@ -99,5 +100,59 @@ func (lsServer *LsServer) handleConn(localConn *net.TCPConn) {
 	// n 最短的长度为7 情况为 ATYP=3 DST.ADDR占用1字节 值为0x0
 	if err != nil || n < 7 {
 		return
+	}
+
+	// CMD代表客户端请求的类型，值长度也是1个字节，有三种类型
+	// CONNECT X'01'
+	if buf[1] != 0x01 {
+		// 目前只支持 CONNECT
+		return
+	}
+
+	var dIP []byte
+	// aType 代表请求的远程服务器地址类型，值长度1个字节，有三种类型
+	switch buf[3] {
+	case 0x01:
+		//    IP V4 address: X'01'
+		dIP = buf[4 : 4+net.IPv4len]
+	case 0x03:
+		//    DOMAINNAME: X'03'
+		ipAddr, err := net.ResolveIPAddr("ip", string(buf[5:n-2]))
+		if err != nil {
+			return
+		}
+		dIP = ipAddr.IP
+	case 0x04:
+		//    IP V6 address: X'04'
+		dIP = buf[4 : 4+net.IPv6len]
+	default:
+		return
+	}
+
+	dPort := buf[n-2:]
+	dstAddr := &net.TCPAddr{
+		IP:   dIP,
+		Port: int(binary.BigEndian.Uint16(dPort)),
+	}
+
+	// 连接真正的远程服务
+	dstServer, err := net.DialTCP("tcp", nil, dstAddr)
+	if err != nil {
+		return
+	} else {
+		defer dstServer.Close()
+
+		// Conn被关闭时直接清除所有数据 不管没有发送的数据
+		dstServer.SetLinger(0)
+
+		// 响应客户端连接成功
+		/**
+		  +----+-----+-------+------+----------+----------+
+		  |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
+		  +----+-----+-------+------+----------+----------+
+		  | 1  |  1  | X'00' |  1   | Variable |    2     |
+		  +----+-----+-------+------+----------+----------+
+		*/
+		lsServer.EncodeWrite(localConn, []byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 	}
 }
