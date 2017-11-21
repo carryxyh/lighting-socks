@@ -23,6 +23,7 @@ func (cipher *Cipher) decode(bs []byte) {
 	}
 }
 
+// 创建一个新的Cipher
 func NewCipher(encodePwd *Password) *Cipher {
 	decodePwd := &Password{}
 	for i, v := range encodePwd {
